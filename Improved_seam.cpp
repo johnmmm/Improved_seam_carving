@@ -170,8 +170,6 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
             }
         }
 
-
-
         if (tmp_place == t)
         {
             //结束了，做收尾工作
@@ -187,13 +185,14 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
                 int s_place = search_stack.at(i);
                 int t_place = search_stack.at(i+1);
                 topo_tmp[s_place][t_place] += min_flow;
-                search_place[s_place] = 0;
+                //search_place[s_place] = 0;
             }
             //恢复原状
-            max_flow += min_flow;
-            printf("now max_flow: %d\n", max_flow);
+            //max_flow += min_flow;
+            //printf("now max_flow: %d\n", max_flow);
 
-            search_place[search_stack.size()-1] = 0;
+            //search_place[search_stack.size()-1] = 0;
+            memset(search_place, 0, sizeof(int)*1000000);
             search_stack.clear();
             search_stack.push_back(s);
             tmp_place = s;
@@ -222,8 +221,65 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
         }
     printf("place to cut: %d\n", total);
 
-    
+    memset(search_place, 0, sizeof(int)*1000000);
+    tmp_place = s;//当前节点
+    flag_no_place = false;//是否没路可走了，回退
+    search_stack.clear();
+    search_stack.push_back(s);
+    int seam_place[1000] = {0};
+    while(1)
+    {
+        map<int, int, greater<int>> tmp_map = topo_max[tmp_place];
+        int cur_place = 0;
+        flag_no_place = true;
+        for (auto it = tmp_map.begin(); it != tmp_map.end(); it++)
+        {
+            if (search_place[it->first] > 0 || topo_tmp[tmp_place][it->first] == it->second)//搜过或者不够
+            {
+                cur_place++;
+                continue;
+            }
+            else if (cur_place >= search_place[tmp_place])//满足要求
+            {
+                search_place[tmp_place] = cur_place+1;
+                tmp_place = it->first;
+                search_stack.push_back(tmp_place);
+                flag_no_place = false;
+                int i_row = tmp_place / cols;
+                int j_col = tmp_place % cols;
+                if (seam_place[i_row] < j_col)
+                    seam_place[i_row] = j_col;
+                break;
+            }
+            cur_place++;
+        }
 
+        if (flag_no_place)
+        {
+            //回退
+            if (tmp_place == s)//结束了
+                break;
+            else
+            {
+                search_stack.pop_back();
+                tmp_place = search_stack.at(search_stack.size()-1);
+            }
+        }
+    }
+    for (int i = 0; i < rows; i++)
+        printf("%d ", seam_place[i]);
+    printf("\n");
+    Mat showImage1(rows, cols, inputImage.type());
+    inputImage.copyTo(showImage1);  //复制
+    for (int i = 0; i < rows; i++)
+    {
+        showImage1.at<Vec3b>(i,seam_place[i])[0] = 0;
+        showImage1.at<Vec3b>(i,seam_place[i])[1] = 0;
+        showImage1.at<Vec3b>(i,seam_place[i])[2] = 255;
+    }
+    //tmpImage.copyTo(outputImage);
+    imshow("Carving Window", showImage1);
+    waitKey();
 
     //--------->>>>>删除对应边
 } 
