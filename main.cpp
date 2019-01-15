@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include "Improved_seam.hpp"
 
 using namespace std;
 using namespace cv;
@@ -272,22 +273,24 @@ int main (int argc, char** argv)
     image1.copyTo(tmpMat);
     Mat deletedLines(image1.rows, 300, CV_32F);
     Mat deletedLine1(image1.rows, 1, CV_32F);
-    for (int i = 0; i < 50; i++)
-    {
-        new_seam_carving(tmpMat, image2, deletedLine1);
-        tmpMat = image2;
-        // for (int j = 0; j < image1.rows; j++)
-        // {
-        //     deletedLines.at<float>(i, j) = deletedLine1.at<float>(j, 1) + i;
-        // }
-        //image2.copyTo(image1);
-        // imshow("Carving Window", image2);
-        // waitKey();
-        cout << i << endl;
-    }
-    imshow("Carving Window", image2);
-    waitKey();
+    improved_seam_carving(image1, image2);
+    // for (int i = 0; i < 50; i++)
+    // {
+    //     new_seam_carving(tmpMat, image2, deletedLine1);
+    //     tmpMat = image2;
+    //     // for (int j = 0; j < image1.rows; j++)
+    //     // {
+    //     //     deletedLines.at<float>(i, j) = deletedLine1.at<float>(j, 1) + i;
+    //     // }
+    //     //image2.copyTo(image1);
+    //     // imshow("Carving Window", image2);
+    //     // waitKey();
+    //     cout << i << endl;
+    // }
+    // imshow("Carving Window", image2);
+    // waitKey();
 
+    //试图显示切掉的线
     // for (int i = 0; i < 50; i++)
     // {
     //     for (int j = 0; j < image1.rows; j++)
