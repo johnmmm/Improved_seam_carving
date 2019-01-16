@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 set(SOURCE_FILES main.cpp Improved_seam.hpp Improved_seam.cpp)
 
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
 link_directories(/usr/lib/x86_64-linux-gnu)
 include_directories(/usr/include, /usr/include/opencv)

@@ -6,3 +6,4 @@ seam_carving
 *.png
 *.cmake
 *.json
+build

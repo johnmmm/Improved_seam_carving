@@ -2,10 +2,12 @@
 
 using namespace std;
 
-map<int, map<int, int, greater<int>>> topo_max;//起始点，结束点和对应上线
-map<int, map<int, int>> topo_tmp;
-bool is_instack[1000000];//判断是否读到了
-int search_place[1000000];//知道搜到第几个了
+//300x200x100
+unordered_map<int, int> topo_max[6000000];//起始点，结束点和对应上线
+map<int, int> topo_tmp[6000000];
+short search_place[6000000];//知道搜到第几个了
+int topo_record[6000000][10] = {0};
+short topo_top[6000000] = {0};
 vector<int> search_stack;//记录一路上的顺序
 
 int get_id(int i, int j, int cols)
@@ -19,6 +21,9 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
     int cols = inputImage.cols;
     int s = rows * cols;
     int t = rows * cols + 1;
+    int total_points = rows * cols + 2;
+    clock_t start_time, time1, time2, time3, time4;
+    start_time = clock();
 
     //--------->>>>>输入图图片
     Mat image_gray(rows, cols, CV_8U, Scalar(0));  
@@ -38,6 +43,7 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
         tmpImage.at<float>(0, j) = tmpImage.at<float>(1, j);
         tmpImage.at<float>(rows+1, j) = tmpImage.at<float>(rows, j);
     }
+    time1 = clock();
     
     //--------->>>>>建立图的集合
     //构造边们
@@ -93,40 +99,35 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
     }
     int amount = 2 * (2 * cols * rows - cols - rows) + 2 * (rows - 1) * (cols - 1) + rows * 2;
     int total = 0;
-    for (auto it = topo_max.begin(); it != topo_max.end(); it++)
+    for (int i = 0; i < total_points; i++)
     {
-        map<int, int, greater<int>> tmp_map = topo_max[it->first];
+        unordered_map<int, int> tmp_map = topo_max[i];
+        int topo_place = 0;
         for (auto it1 = tmp_map.begin(); it1 != tmp_map.end(); it1++)
         {
-            topo_tmp[it->first][it1->first] = 0;
+            topo_tmp[i][it1->first] = 0;
+            topo_record[i][topo_place++] = it1->first;
             total++;
         }
+        topo_top[i] = topo_place;
     }
     printf("rows: %d, cols: %d\n", rows, cols);
     printf("amount: %d\n", amount);
     printf("total: %d\n", total);
     printf("1: %d, 2: %d, 3: %d\n", topo_max[150000][150001], topo_max[0][1], topo_max[22][21]);
-    
+    time2 = clock();
     
     //--------->>>>>手写神搜
     int max_flow = 0;
     int tmp_place = s;//当前节点
     int min_flow = INFMAX;//记录路径中最小的
     bool flag_no_place = false;//是否没路可走了，回退
+    memset(search_place, 0, sizeof(int)*1000000);
     search_stack.push_back(s);
     while (1)
-    {
-        //搜索下一个
-        // if (max_flow == 9)
-        // {
-        //     printf("now in: %d\n", tmp_place);
-        //     namedWindow("Original Window");
-        //     imshow("Original Window", image_gray);
-        //     waitKey();
-        // }
-        
-        map<int, int, greater<int>> tmp_map = topo_max[tmp_place];
-        int cur_place = 0;
+    {     
+        unordered_map<int, int> tmp_map = topo_max[tmp_place];
+        int cur_place = search_place[tmp_place];
         flag_no_place = true;
         if (topo_max[tmp_place].count(t) > 0)//直接进终点，这样简便
         {
@@ -136,9 +137,16 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
         }
         else
         {
-            for (auto it = tmp_map.begin(); it != tmp_map.end(); it++)
+            while (cur_place < topo_top[tmp_place])
             {
-                if (search_place[it->first] > 0 || topo_tmp[tmp_place][it->first] == it->second)//搜过或者不够
+                int target_place = topo_record[tmp_place][cur_place];
+                if (search_place[target_place] > 0)//搜过
+                {
+                    cur_place++;
+                    continue;
+                }
+                //满了
+                else if (topo_max[tmp_place][target_place] == topo_tmp[tmp_place][target_place])
                 {
                     cur_place++;
                     continue;
@@ -146,12 +154,13 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
                 else if (cur_place >= search_place[tmp_place])//满足要求
                 {
                     search_place[tmp_place] = cur_place+1;
-                    tmp_place = it->first;
+                    tmp_place = target_place;
                     search_stack.push_back(tmp_place);
                     flag_no_place = false;
                     break;
                 }
-                cur_place++;
+                else
+                    cur_place++;
             }
         }
         
@@ -164,7 +173,6 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
             }
             else
             {
-                //search_place[search_stack.at(search_stack.size()-1)] = 0;
                 search_stack.pop_back();
                 tmp_place = search_stack.at(search_stack.size()-1);
             }
@@ -185,25 +193,22 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
                 int s_place = search_stack.at(i);
                 int t_place = search_stack.at(i+1);
                 topo_tmp[s_place][t_place] += min_flow;
-                //search_place[s_place] = 0;
             }
             //恢复原状
-            //max_flow += min_flow;
+            max_flow += min_flow;
             //printf("now max_flow: %d\n", max_flow);
 
-            //search_place[search_stack.size()-1] = 0;
             memset(search_place, 0, sizeof(int)*1000000);
             search_stack.clear();
             search_stack.push_back(s);
             tmp_place = s;
             min_flow = INFMAX;
-
-            
             continue;
         }
             
     }
-    
+    printf("max flow is: %d\n", max_flow);
+    time3 = clock();
 
     //--------->>>>>找到最小割
     total = 0;
@@ -229,7 +234,7 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
     int seam_place[1000] = {0};
     while(1)
     {
-        map<int, int, greater<int>> tmp_map = topo_max[tmp_place];
+        unordered_map<int, int> tmp_map = topo_max[tmp_place];
         int cur_place = 0;
         flag_no_place = true;
         for (auto it = tmp_map.begin(); it != tmp_map.end(); it++)
@@ -277,9 +282,16 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
         showImage1.at<Vec3b>(i,seam_place[i])[1] = 0;
         showImage1.at<Vec3b>(i,seam_place[i])[2] = 255;
     }
+    time4 = clock();
     //tmpImage.copyTo(outputImage);
     imshow("Carving Window", showImage1);
     waitKey();
 
     //--------->>>>>删除对应边
+
+    printf("载入图片： %f s\n", (double)(time1 - start_time) / CLOCKS_PER_SEC);
+    printf("构造图边： %f s\n", (double)(time2 - time1) / CLOCKS_PER_SEC);
+    printf("进行神搜： %f s\n", (double)(time3 - time2) / CLOCKS_PER_SEC);
+    printf("寻找割集： %f s\n", (double)(time4 - time3) / CLOCKS_PER_SEC);
+    printf("总共时间： %f s\n", (double)(time4 - start_time) / CLOCKS_PER_SEC);
 } 
