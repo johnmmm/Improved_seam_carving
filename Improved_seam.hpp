@@ -19,6 +19,7 @@ using namespace std;
 using namespace cv;
 
 const int INFMAX = 99999999;
+const int MAX_SIZE = 6000000;
 
 void improved_seam_carving (Mat& inputImage, Mat& outputImage);
 

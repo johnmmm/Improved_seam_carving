@@ -3,16 +3,109 @@
 using namespace std;
 
 //300x200x100
-unordered_map<int, int> topo_max[6000000];//起始点，结束点和对应上线
-map<int, int> topo_tmp[6000000];
-short search_place[6000000];//知道搜到第几个了
-int topo_record[6000000][10] = {0};
-short topo_top[6000000] = {0};
+unordered_map<int, int> topo_max[MAX_SIZE];//起始点，结束点和对应上线
+map<int, int> topo_tmp[MAX_SIZE];
+short search_place[MAX_SIZE];//知道搜到第几个了
+int topo_record[MAX_SIZE][10] = {0};
+short topo_top[MAX_SIZE] = {0};
 vector<int> search_stack;//记录一路上的顺序
 
 int get_id(int i, int j, int cols)
 {
     return (i - 1) * cols + j - 1;
+}
+
+void make_topology ()
+{
+
+}
+
+void edmonds_karp_flow (int s, int t)
+{
+    //--------->>>>>手写神搜
+    int max_flow = 0;
+    int tmp_place = s;//当前节点
+    int min_flow = INFMAX;//记录路径中最小的
+    bool flag_no_place = false;//是否没路可走了，回退
+    memset(search_place, 0, sizeof(int)*1000000);
+    search_stack.push_back(s);
+    while (1)
+    {     
+        unordered_map<int, int> tmp_map = topo_max[tmp_place];
+        int cur_place = search_place[tmp_place];
+        flag_no_place = true;
+        if (topo_max[tmp_place].count(t) > 0)//直接进终点，这样简便
+        {
+            tmp_place = t;
+            search_stack.push_back(tmp_place);
+            flag_no_place = false;
+        }
+        else
+        {
+            while (cur_place < topo_top[tmp_place])
+            {
+                int target_place = topo_record[tmp_place][cur_place];
+                if (search_place[target_place] > 0)//搜过
+                {
+                    cur_place++;
+                    continue;
+                }
+                //满了
+                else if (topo_max[tmp_place][target_place] == topo_tmp[tmp_place][target_place])
+                {
+                    cur_place++;
+                    continue;
+                }
+                else if (cur_place >= search_place[tmp_place])//满足要求
+                {
+                    search_place[tmp_place] = cur_place+1;
+                    tmp_place = target_place;
+                    search_stack.push_back(tmp_place);
+                    flag_no_place = false;
+                    break;
+                }
+                else
+                    cur_place++;
+            }
+        }
+        if (flag_no_place)//回退
+        {
+            if (tmp_place == s)//结束了
+                break;
+            else
+            {
+                search_stack.pop_back();
+                tmp_place = search_stack.at(search_stack.size()-1);
+            }
+        }
+
+        if (tmp_place == t)//结束了，做收尾工作
+        {
+            for (int i = 0; i < search_stack.size() - 1; i++)
+            {
+                int s_place = search_stack.at(i);
+                int t_place = search_stack.at(i+1);
+                if (min_flow > topo_max[s_place][t_place] - topo_tmp[s_place][t_place])
+                    min_flow = topo_max[s_place][t_place] - topo_tmp[s_place][t_place];
+            }
+            for (int i = 0; i < search_stack.size() - 1; i++)
+            {
+                int s_place = search_stack.at(i);
+                int t_place = search_stack.at(i+1);
+                topo_tmp[s_place][t_place] += min_flow;
+            }
+            //恢复原状
+            max_flow += min_flow;
+            //printf("now max_flow: %d\n", max_flow);
+            memset(search_place, 0, sizeof(int)*1000000);
+            search_stack.clear();
+            search_stack.push_back(s);
+            tmp_place = s;
+            min_flow = INFMAX;
+            continue;
+        }     
+    }
+    printf("max flow is: %d\n", max_flow);
 }
 
 void improved_seam_carving (Mat& inputImage, Mat& outputImage)
@@ -118,96 +211,7 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
     time2 = clock();
     
     //--------->>>>>手写神搜
-    int max_flow = 0;
-    int tmp_place = s;//当前节点
-    int min_flow = INFMAX;//记录路径中最小的
-    bool flag_no_place = false;//是否没路可走了，回退
-    memset(search_place, 0, sizeof(int)*1000000);
-    search_stack.push_back(s);
-    while (1)
-    {     
-        unordered_map<int, int> tmp_map = topo_max[tmp_place];
-        int cur_place = search_place[tmp_place];
-        flag_no_place = true;
-        if (topo_max[tmp_place].count(t) > 0)//直接进终点，这样简便
-        {
-            tmp_place = t;
-            search_stack.push_back(tmp_place);
-            flag_no_place = false;
-        }
-        else
-        {
-            while (cur_place < topo_top[tmp_place])
-            {
-                int target_place = topo_record[tmp_place][cur_place];
-                if (search_place[target_place] > 0)//搜过
-                {
-                    cur_place++;
-                    continue;
-                }
-                //满了
-                else if (topo_max[tmp_place][target_place] == topo_tmp[tmp_place][target_place])
-                {
-                    cur_place++;
-                    continue;
-                }
-                else if (cur_place >= search_place[tmp_place])//满足要求
-                {
-                    search_place[tmp_place] = cur_place+1;
-                    tmp_place = target_place;
-                    search_stack.push_back(tmp_place);
-                    flag_no_place = false;
-                    break;
-                }
-                else
-                    cur_place++;
-            }
-        }
-        
-        if (flag_no_place)
-        {
-            //回退
-            if (tmp_place == s)//结束了
-            {
-                break;
-            }
-            else
-            {
-                search_stack.pop_back();
-                tmp_place = search_stack.at(search_stack.size()-1);
-            }
-        }
-
-        if (tmp_place == t)
-        {
-            //结束了，做收尾工作
-            for (int i = 0; i < search_stack.size() - 1; i++)
-            {
-                int s_place = search_stack.at(i);
-                int t_place = search_stack.at(i+1);
-                if (min_flow > topo_max[s_place][t_place] - topo_tmp[s_place][t_place])
-                    min_flow = topo_max[s_place][t_place] - topo_tmp[s_place][t_place];
-            }
-            for (int i = 0; i < search_stack.size() - 1; i++)
-            {
-                int s_place = search_stack.at(i);
-                int t_place = search_stack.at(i+1);
-                topo_tmp[s_place][t_place] += min_flow;
-            }
-            //恢复原状
-            max_flow += min_flow;
-            //printf("now max_flow: %d\n", max_flow);
-
-            memset(search_place, 0, sizeof(int)*1000000);
-            search_stack.clear();
-            search_stack.push_back(s);
-            tmp_place = s;
-            min_flow = INFMAX;
-            continue;
-        }
-            
-    }
-    printf("max flow is: %d\n", max_flow);
+    edmonds_karp_flow(s, t);
     time3 = clock();
 
     //--------->>>>>找到最小割
@@ -227,19 +231,26 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
     printf("place to cut: %d\n", total);
 
     memset(search_place, 0, sizeof(int)*1000000);
-    tmp_place = s;//当前节点
-    flag_no_place = false;//是否没路可走了，回退
+    int tmp_place = s;//当前节点
+    bool flag_no_place = false;//是否没路可走了，回退
     search_stack.clear();
     search_stack.push_back(s);
     int seam_place[1000] = {0};
     while(1)
     {
         unordered_map<int, int> tmp_map = topo_max[tmp_place];
-        int cur_place = 0;
+        int cur_place = search_place[tmp_place];
         flag_no_place = true;
-        for (auto it = tmp_map.begin(); it != tmp_map.end(); it++)
+        while (cur_place < topo_top[tmp_place])
         {
-            if (search_place[it->first] > 0 || topo_tmp[tmp_place][it->first] == it->second)//搜过或者不够
+            int target_place = topo_record[tmp_place][cur_place];
+            if (search_place[target_place] > 0)//搜过
+            {
+                cur_place++;
+                continue;
+            }
+            //满了
+            else if (topo_max[tmp_place][target_place] == topo_tmp[tmp_place][target_place])
             {
                 cur_place++;
                 continue;
@@ -247,7 +258,7 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
             else if (cur_place >= search_place[tmp_place])//满足要求
             {
                 search_place[tmp_place] = cur_place+1;
-                tmp_place = it->first;
+                tmp_place = target_place;
                 search_stack.push_back(tmp_place);
                 flag_no_place = false;
                 int i_row = tmp_place / cols;
@@ -256,12 +267,11 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
                     seam_place[i_row] = j_col;
                 break;
             }
-            cur_place++;
+            else
+                cur_place++;
         }
-
-        if (flag_no_place)
+        if (flag_no_place)//回退
         {
-            //回退
             if (tmp_place == s)//结束了
                 break;
             else
@@ -283,7 +293,6 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
         showImage1.at<Vec3b>(i,seam_place[i])[2] = 255;
     }
     time4 = clock();
-    //tmpImage.copyTo(outputImage);
     imshow("Carving Window", showImage1);
     waitKey();
 
