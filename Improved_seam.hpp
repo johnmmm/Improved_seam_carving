@@ -14,6 +14,7 @@
 #include <stack>
 #include <vector>
 #include <time.h>
+#include <queue>
 
 using namespace std;
 using namespace cv;
