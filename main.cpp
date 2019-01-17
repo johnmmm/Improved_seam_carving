@@ -273,7 +273,16 @@ int main (int argc, char** argv)
     image1.copyTo(tmpMat);
     Mat deletedLines(image1.rows, 300, CV_32F);
     Mat deletedLine1(image1.rows, 1, CV_32F);
-    improved_seam_carving(image1, image2);
+
+    for (int i = 0; i < 100; i++)
+    {
+        improved_seam_carving(tmpMat, image2);
+        tmpMat = image2;
+    }
+    imshow("Carving Window", image2);
+    waitKey();
+    imwrite("./test1_1.png", image2);
+
     // for (int i = 0; i < 50; i++)
     // {
     //     new_seam_carving(tmpMat, image2, deletedLine1);

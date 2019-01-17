@@ -14,6 +14,7 @@ int del_result[MAX_SIZE] = {0};
 int mode_result[MAX_SIZE] = {0};
 int topo_tmp[MAX_SIZE+1][9];
 int globals, globalt, globalrow;
+int seam_place[1000] = {0};
 
 int get_id(int i, int j, int cols)
 {
@@ -39,8 +40,9 @@ void init_result(int cols)
     {
         mode_result[i] = i % cols;
         del_result[i] = i / cols;
+        topo_re[i].clear();
     }
-         
+    memset(seam_place, 0, sizeof(int)*1000);   
     memset(topo_tmp, 0, sizeof(int)*MAX_SIZE*9); 
 }
 
@@ -199,7 +201,7 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
             //恢复原状
             max_flow += min_flow;
             //printf("now max_flow: %d\n", max_flow);
-            // printf("s: %d, t: %d\n", zeros, zerot);
+            //printf("s: %d, t: %d\n", zeros, zerot);
             // namedWindow("???");
             // waitKey();
             min_flow = INFMAX;
@@ -296,6 +298,29 @@ void edmonds_karp_flow (int s, int t)
         }     
     }
     printf("max flow is: %d\n", max_flow);
+}
+
+void del_one_col (Mat& srcMat, Mat& dstMat)
+{
+    for (int i = 0; i < dstMat.rows; i++)  //对目标图像进行操作
+    {
+        int k = seam_place[i];
+        
+        for (int j = 0; j < k; j++)  //删除列前的元素复制
+        {
+            dstMat.at<Vec3b>(i,j)[0] = srcMat.at<Vec3b>(i,j)[0];  // 8U 类型的 RGB 彩色图像 [i] 存放bgr的值
+            dstMat.at<Vec3b>(i,j)[1] = srcMat.at<Vec3b>(i,j)[1];
+            dstMat.at<Vec3b>(i,j)[2] = srcMat.at<Vec3b>(i,j)[2];
+        }
+        for (int j = k; j < dstMat.cols-1; j++)  //复制删除列后的元素 最后一列默认不处理
+        {
+            if (j == dstMat.cols - 1)
+                continue;
+            dstMat.at<Vec3b>(i,j)[0] = srcMat.at<Vec3b>(i,j+1)[0];
+            dstMat.at<Vec3b>(i,j)[1] = srcMat.at<Vec3b>(i,j+1)[1];
+            dstMat.at<Vec3b>(i,j)[2] = srcMat.at<Vec3b>(i,j+1)[2];
+        }
+    }
 }
 
 void improved_seam_carving (Mat& inputImage, Mat& outputImage)
@@ -413,7 +438,7 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
     // printf("amount: %d\n", amount);
     // printf("total: %d\n", total)
     time2 = clock();
-    
+
     //--------->>>>>手写神搜
     sap_dinic_flow(s, t, rows, cols);
     //edmonds_karp_flow(s, t);
@@ -427,7 +452,7 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
         bfs_points.pop();
     int d[rows*cols] = {0};
     int tmp_place;
-    int seam_place[1000] = {0};
+    
     memset(d, 0, sizeof(int)*rows*cols);
     memset(seam_place, 0, sizeof(int)*1000);
     for (int i = 0; i < rows; i++)
@@ -469,7 +494,9 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
     waitKey();
 
     //--------->>>>>删除对应边
-
+    Mat image2(rows, cols-1, inputImage.type());
+    del_one_col(inputImage, image2);
+    image2.copyTo(outputImage);
 
     printf("载入图片： %f s\n", (double)(time1 - start_time) / CLOCKS_PER_SEC);
     printf("构造图边： %f s\n", (double)(time2 - time1) / CLOCKS_PER_SEC);
