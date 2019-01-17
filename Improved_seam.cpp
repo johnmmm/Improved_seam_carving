@@ -5,10 +5,11 @@ using namespace std;
 //300x200x100
 unordered_map<int, int> topo_max[MAX_SIZE];//起始点，结束点和对应上线
 // map<int, int> topo_tmp[MAX_SIZE];
-short search_place[MAX_SIZE];//知道搜到第几个了
+short search_place[MAX_SIZE+1];//知道搜到第几个了
 int topo_record[MAX_SIZE][10] = {0};
 short topo_top[MAX_SIZE] = {0};
 vector<int> search_stack;//记录一路上的顺序
+int search_point[MAX_SIZE] = {0};
 int zero_fuck = 0;
 
 int get_id(int i, int j, int cols)
@@ -30,7 +31,8 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
     int tmp_place = s;//当前节点
     int min_flow = INFMAX;//记录路径中最小的
     bool flag_no_place = false;//是否没路可走了，回退
-    memset(search_place, 0, sizeof(int)*1000000);
+    memset(search_place, 0, sizeof(short)*MAX_SIZE);
+    memset(search_point, 0, sizeof(int)*MAX_SIZE);
     search_stack.push_back(s);
 
     //int d[rows][cols] = {0};
@@ -79,6 +81,7 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
 
     //开始搞
     tmp_place = s;
+    search_point[s] = s;
     int next_place = 0, min_d = INFMAX;
     for (auto it = topo_max[tmp_place].begin(); it != topo_max[tmp_place].end(); it++)
     {
@@ -103,8 +106,8 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
                 if (d[tmp_place] == d[target_place] + 1)
                 {
                     flag_no_place = false;
+                    search_point[target_place] = tmp_place;
                     tmp_place = target_place;
-                    search_stack.push_back(tmp_place);
                     break;
                 }
             } 
@@ -116,37 +119,26 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
                 break;
             d[tmp_place] = min_d + 1;
             search_place[d[tmp_place]]++;
-            //print_stack();
-            if (tmp_place != s)
-            {
-                search_stack.pop_back();
-                tmp_place = search_stack.back();
-            }
+            tmp_place = search_point[tmp_place];
             continue;
         }
         if (tmp_place % cols == cols - 1)//到终点了
         {
-            for (int i = 0; i < search_stack.size() - 1; i++)
+            int flow_place = tmp_place;
+            while (search_point[flow_place] != s)
             {
-                int s_place = search_stack.at(i);
-                int t_place = search_stack.at(i+1);
-                if (min_flow > topo_max[s_place][t_place])
-                {
-                    min_flow = topo_max[s_place][t_place];
-                }
-                    
+                min_flow = min(min_flow, topo_max[search_point[flow_place]][flow_place]);
+                flow_place = search_point[flow_place];
             }
-            for (int i = 0; i < search_stack.size() - 1; i++)
+            flow_place = tmp_place;
+            while (search_point[flow_place] != s)
             {
-                int s_place = search_stack.at(i);
-                int t_place = search_stack.at(i+1);
-                topo_max[s_place][t_place] -= min_flow;
-                topo_max[t_place][s_place] += min_flow;
+                topo_max[search_point[flow_place]][flow_place] -= min_flow;
+                topo_max[flow_place][search_point[flow_place]] += min_flow;
+                flow_place = search_point[flow_place];
             }
 
             //同时重启s
-            search_stack.clear();
-            search_stack.push_back(s);
             min_d = INFMAX;
             next_place = 0;
             for (auto it = topo_max[s].begin(); it != topo_max[s].end(); it++)
@@ -158,12 +150,13 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
                     next_place = it->first;
                 }
             }
+            tmp_place = s;
+            search_point[next_place] = tmp_place;
             tmp_place = next_place;
-            search_stack.push_back(tmp_place);
             
             //恢复原状
             max_flow += min_flow;
-            // printf("now max_flow: %d\n", max_flow);
+            //printf("now max_flow: %d\n", max_flow);
             // namedWindow("???");
             // waitKey();
             min_flow = INFMAX;
@@ -180,7 +173,7 @@ void edmonds_karp_flow (int s, int t)
     int tmp_place = s;//当前节点
     int min_flow = INFMAX;//记录路径中最小的
     bool flag_no_place = false;//是否没路可走了，回退
-    memset(search_place, 0, sizeof(int)*1000000);
+    memset(search_place, 0, sizeof(short)*MAX_SIZE);
     search_stack.push_back(s);
     while (1)
     {     
@@ -251,7 +244,7 @@ void edmonds_karp_flow (int s, int t)
             //恢复原状
             max_flow += min_flow;
             //printf("now max_flow: %d\n", max_flow);
-            memset(search_place, 0, sizeof(int)*1000000);
+            memset(search_place, 0, sizeof(short)*MAX_SIZE);
             search_stack.clear();
             search_stack.push_back(s);
             tmp_place = s;
