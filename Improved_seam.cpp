@@ -4,7 +4,7 @@ using namespace std;
 
 //300x200x100
 unordered_map<int, int> topo_max[MAX_SIZE];//起始点，结束点和对应上线
-map<int, int> topo_tmp[MAX_SIZE];
+// map<int, int> topo_tmp[MAX_SIZE];
 short search_place[MAX_SIZE];//知道搜到第几个了
 int topo_record[MAX_SIZE][10] = {0};
 short topo_top[MAX_SIZE] = {0};
@@ -16,6 +16,13 @@ int get_id(int i, int j, int cols)
     return (i - 1) * cols + j - 1;
 } 
 
+void print_stack()
+{
+    for (int i = 0; i < search_stack.size(); i++)
+        printf("%d, ", search_stack.at(i));
+    printf("\n");
+}
+
 void sap_dinic_flow (int s, int t, int rows, int cols)
 {
     //--------->>>>>手写神搜
@@ -26,14 +33,17 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
     memset(search_place, 0, sizeof(int)*1000000);
     search_stack.push_back(s);
 
-    int d[rows][cols] = {0};
+    //int d[rows][cols] = {0};
+    int d[rows*cols+2] = {0};
+    memset(d, 0, sizeof(int)*(rows*cols+2));
     //初始化最短增广路径
     queue<int> bfs_points;
     for (int i = 0; i < rows; i++)
     {
-        bfs_points.push(get_id(i+1, cols, cols));
-        d[i][cols-1] = 1;
-        search_place[d[i][cols-1]]++;
+        int tmp_id = get_id(i+1, cols, cols);
+        bfs_points.push(tmp_id);
+        d[tmp_id] = 1;
+        search_place[d[tmp_id]]++;
     }
     while (bfs_points.size() > 0)
     {
@@ -56,19 +66,16 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
                 continue;
             else if (topo_max[tmp].count(tmp_place) > 0)//没必要的判定
             {
-                int row = tmp / cols;
-                int col = tmp % cols;
-                if (d[row][col] == 0 && topo_max[tmp][tmp_place] > 0)//新的点
+                if (d[tmp] == 0 && topo_max[tmp][tmp_place] > 0)//新的点
                 {
-                    d[row][col] = d[ii][jj] + 1;
-                    search_place[d[row][col]]++;
+                    d[tmp] = d[tmp_place] + 1;
+                    search_place[d[tmp]]++;
                     bfs_points.push(tmp);
                 }
             }
         }
         bfs_points.pop();
     }
-    printf("00: %d\n", d[0][0]);
 
     //开始搞
     tmp_place = s;
@@ -83,13 +90,10 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
     }
     tmp_place = next_place;
     search_stack.push_back(tmp_place);
-    int d_s = min_d + 1;
     while (1)
     {
         //printf("tmp_place: %d\n", tmp_place);
         flag_no_place = true;
-        int tmp_i = tmp_place / cols;
-        int tmp_j = tmp_place % cols;
         min_d = INFMAX;
         for (auto it = topo_max[tmp_place].begin(); it != topo_max[tmp_place].end(); it++)
         {
@@ -98,8 +102,8 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
             int j = target_place % cols;
             if (topo_max[tmp_place][target_place] > 0)
             {
-                min_d = min(min_d, d[i][j]);
-                if (d[tmp_i][tmp_j] == d[i][j] + 1)
+                min_d = min(min_d, d[target_place]);
+                if (d[tmp_place] == d[target_place] + 1)
                 {
                     flag_no_place = false;
                     tmp_place = target_place;
@@ -111,9 +115,13 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
         }
         if (flag_no_place)
         {
-            if (tmp_j == 0)//回s了
+            if (tmp_place % cols == 0)//回s了
             {
-                d[tmp_i][tmp_j] = min_d + 1;
+                search_place[d[tmp_place]]--;
+                if (search_place[d[tmp_place]] == 0)
+                    break;
+                d[tmp_place] = min_d + 1;
+                search_place[d[tmp_place]]++;
                 search_stack.pop_back();
                 tmp_place = search_stack.back();
                 //等同于用s重开一局
@@ -122,12 +130,10 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
                 for (auto it = topo_max[s].begin(); it != topo_max[s].end(); it++)
                 {
                     int target_place = it->first;
-                    int i = target_place / cols;
-                    int j = target_place % cols;
-                    if (min_d > d[i][j])
+                    if (min_d > d[target_place])
                     {
                         next_place = target_place;
-                        min_d = d[i][j];
+                        min_d = d[target_place];
                     }
                 }
                 tmp_place = next_place;
@@ -136,11 +142,12 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
             }
             else
             {
-                search_place[d[tmp_i][tmp_j]]--;
-                if (search_place[d[tmp_i][tmp_j]] == 0)
+                search_place[d[tmp_place]]--;
+                if (search_place[d[tmp_place]] == 0)
                     break;
-                d[tmp_i][tmp_j] = min_d + 1;
-                search_place[d[tmp_i][tmp_j]]++;
+                d[tmp_place] = min_d + 1;
+                search_place[d[tmp_place]]++;
+                //print_stack();
                 search_stack.pop_back();
                 tmp_place = search_stack.back();
                 continue;
@@ -148,6 +155,8 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
         }
         if (tmp_place % cols == cols - 1)//到终点了
         {
+            int zero_place = 0;
+            zero_fuck = 0;
             for (int i = 0; i < search_stack.size() - 1; i++)
             {
                 int s_place = search_stack.at(i);
@@ -155,6 +164,7 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
                 if (min_flow > topo_max[s_place][t_place])
                 {
                     min_flow = topo_max[s_place][t_place];
+                    zero_place = s_place;
                     zero_fuck = t_place;
                 }
                     
@@ -167,57 +177,73 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
                 topo_max[t_place][s_place] += min_flow;
             }
 
+            //bool end_flag = false;
+            // while (search_stack.size() > 1)
+            // {
+            //     // int size = search_stack.size();
+            //     // int s_place = search_stack.at(size-2);
+            //     int t_place = search_stack.back();
+            //     if (t_place == zero_place)
+            //     {
+            //         tmp_place = t_place;
+            //         break;
+            //     }
+            //     search_stack.pop_back();
 
-            while (search_stack.size() > 1)
-            {
-                int size = search_stack.size();
-                int s_place = search_stack.at(size-2);
-                int t_place = search_stack.back();
-                topo_max[s_place][t_place] -= min_flow;
-                topo_max[t_place][s_place] += min_flow;
-                //更新d值
-                min_d = INFMAX;
-                tmp_i = t_place / cols;
-                tmp_j = t_place % cols;
-                for (auto it = topo_max[t_place].begin(); it != topo_max[t_place].end(); it++)
-                {
-                    int target_place = it->first;
-                    int i = target_place / cols;
-                    int j = target_place % cols;
-                    if (topo_max[t_place][target_place] > 0)
-                        min_d = min(min_d, d[i][j]);
-                }
-                d[tmp_i][tmp_j] = min_d + 1;
-                search_stack.pop_back();
-            }
+
+            //     // topo_max[s_place][t_place] -= min_flow;
+            //     // topo_max[t_place][s_place] += min_flow;
+            //     // //更新d值
+            //     // min_d = INFMAX;
+            //     // tmp_i = t_place / cols;
+            //     // tmp_j = t_place % cols;
+            //     // for (auto it = topo_max[t_place].begin(); it != topo_max[t_place].end(); it++)
+            //     // {
+            //     //     int target_place = it->first;
+            //     //     int i = target_place / cols;
+            //     //     int j = target_place % cols;
+            //     //     if (topo_max[t_place][target_place] > 0)
+            //     //         min_d = min(min_d, d[i][j]);
+            //     // }
+            //     // search_place[d[tmp_i][tmp_j]]--;
+            //     // // if (search_place[d[tmp_i][tmp_j]] == 0)//结束
+            //     // // {
+            //     // //     end_flag = true;
+            //     // //     break;
+            //     // // }  
+            //     // d[tmp_i][tmp_j] = min_d + 1;
+            //     // search_place[d[tmp_i][tmp_j]]++;
+                
+            // }
+            // if (end_flag)
+            //     break;
             //就剩s了，先更新s，同时重启
+            search_stack.clear();
+            search_stack.push_back(s);
             min_d = INFMAX;
             next_place = 0;
             for (auto it = topo_max[s].begin(); it != topo_max[s].end(); it++)
             {
                 int target_place = it->first;
-                int i = target_place / cols;
-                int j = target_place % cols;
-                if (min_d > d[i][j])
+                if (min_d > d[target_place])
                 {
-                    min_d = d[i][j];
+                    min_d = d[target_place];
                     next_place = it->first;
                 }
             }
-            d_s = min_d + 1;
             tmp_place = next_place;
+            search_stack.push_back(tmp_place);
             
             //恢复原状
             max_flow += min_flow;
-            printf("now max_flow: %d\n", max_flow);
-            printf("fuck zero: %d\n", zero_fuck);
+            // printf("now max_flow: %d\n", max_flow);
+            // printf("s: %d. t: %d\n", zero_place, zero_fuck);
+            // namedWindow("???");
+            // waitKey();
             // printf("begin: %d\n", d[0][0]);
-            //memset(search_place, 0, sizeof(int)*1000000);
-            search_stack.clear();
-            // search_place[s] = 1;
-            // search_place[tmp_place] = 1;
-            search_stack.push_back(s);
-            search_stack.push_back(tmp_place);
+            // search_stack.clear();
+            // search_stack.push_back(s);
+            // search_stack.push_back(tmp_place);
             min_flow = INFMAX;
             continue;
         }
@@ -437,6 +463,8 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
     printf("place to cut: %d\n", total);
 
     queue<int> bfs_points;
+    while(!bfs_points.empty())
+        bfs_points.pop();
     int d[rows][cols] = {0};
     int tmp_place;
     int seam_place[1000] = {0};
