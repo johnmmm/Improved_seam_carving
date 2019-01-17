@@ -4,18 +4,43 @@ using namespace std;
 
 //300x200x100
 unordered_map<int, int> topo_max[MAX_SIZE];//起始点，结束点和对应上线
-// map<int, int> topo_tmp[MAX_SIZE];
 short search_place[MAX_SIZE+1];//知道搜到第几个了
 int topo_record[MAX_SIZE][10] = {0};
 short topo_top[MAX_SIZE] = {0};
 vector<int> search_stack;//记录一路上的顺序
 int search_point[MAX_SIZE] = {0};
-int zero_fuck = 0;
+int del_result[MAX_SIZE] = {0};
+int mode_result[MAX_SIZE] = {0};
+//Topo topo_tmp[MAX_SIZE];
+int topo_tmp[MAX_SIZE][9];
+int globals, globalt;
 
 int get_id(int i, int j, int cols)
 {
     return (i - 1) * cols + j - 1;
 } 
+
+int get_place(int id_tmp, int id_target)
+{
+    if (id_target == globalt)
+        return 4;
+    int tmp_i = del_result[id_tmp];
+    int tmp_j = mode_result[id_tmp];
+    int target_i = del_result[id_target];
+    int target_j = mode_result[id_target];
+    return 3 * (tmp_i + 1 - target_i) + tmp_j + 1 - target_j;
+}
+
+void init_result(int cols)
+{
+    for (int i = 0; i < MAX_SIZE; i++)
+    {
+        mode_result[i] = i % cols;
+        del_result[i] = i / cols;
+    }
+         
+    memset(topo_tmp, 0, sizeof(int)*MAX_SIZE*9); 
+}
 
 void print_stack()
 {
@@ -33,7 +58,6 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
     bool flag_no_place = false;//是否没路可走了，回退
     memset(search_place, 0, sizeof(short)*MAX_SIZE);
     memset(search_point, 0, sizeof(int)*MAX_SIZE);
-    search_stack.push_back(s);
 
     //int d[rows][cols] = {0};
     int d[rows*cols+2] = {0};
@@ -100,7 +124,7 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
         for (auto it = topo_max[tmp_place].begin(); it != topo_max[tmp_place].end(); it++)
         {
             int target_place = it->first;
-            if (topo_max[tmp_place][target_place] > 0)
+            if (tmp_place == s)
             {
                 min_d = min(min_d, d[target_place]);
                 if (d[tmp_place] == d[target_place] + 1)
@@ -110,7 +134,22 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
                     tmp_place = target_place;
                     break;
                 }
-            } 
+            }
+            else
+            {
+                if (topo_tmp[tmp_place][get_place(tmp_place, target_place)] > 0)
+                {
+                    min_d = min(min_d, d[target_place]);
+                    if (d[tmp_place] == d[target_place] + 1)
+                    {
+                        flag_no_place = false;
+                        search_point[target_place] = tmp_place;
+                        tmp_place = target_place;
+                        break;
+                    }
+                } 
+            }
+            
         }
         if (flag_no_place)
         {
@@ -127,15 +166,20 @@ void sap_dinic_flow (int s, int t, int rows, int cols)
             int flow_place = tmp_place;
             while (search_point[flow_place] != s)
             {
-                min_flow = min(min_flow, topo_max[search_point[flow_place]][flow_place]);
+                int pre = search_point[flow_place];
+                min_flow = min(min_flow, topo_tmp[pre][get_place(pre, flow_place)]);
+                //min_flow = min(min_flow, topo_max[search_point[flow_place]][flow_place]);
                 flow_place = search_point[flow_place];
             }
             flow_place = tmp_place;
             while (search_point[flow_place] != s)
             {
-                topo_max[search_point[flow_place]][flow_place] -= min_flow;
-                topo_max[flow_place][search_point[flow_place]] += min_flow;
-                flow_place = search_point[flow_place];
+                int pre = search_point[flow_place];
+                topo_tmp[pre][get_place(pre, flow_place)] -= min_flow;
+                //topo_max[search_point[flow_place]][flow_place] -= min_flow;
+                topo_tmp[flow_place][get_place(flow_place, pre)] += min_flow;
+                //topo_max[flow_place][search_point[flow_place]] += min_flow;
+                flow_place = pre;
             }
 
             //同时重启s
@@ -261,11 +305,14 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
     int cols = inputImage.cols;
     int s = rows * cols;
     int t = rows * cols + 1;
+    globals = s;
+    globalt = t;
     int total_points = rows * cols + 2;
     clock_t start_time, time1, time2, time3, time4;
     start_time = clock();
 
     //--------->>>>>输入图图片
+    init_result(cols);
     Mat image_gray(rows, cols, CV_8U, Scalar(0));  
     cvtColor(inputImage, image_gray, CV_BGR2GRAY);
     //构造一个变大的图
@@ -347,6 +394,8 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
         {
             topo_record[i][topo_place++] = it1->first;
             total++;
+            if (i < s)
+                topo_tmp[i][get_place(i, it1->first)] = it1->second;
         }
         topo_top[i] = topo_place;
     }
@@ -363,19 +412,19 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
 
     //--------->>>>>找到最小割
     total = 0;
-    for (int i = 0; i < rows; i++)
-        for (int j = 0; j < cols-1; j++)
-        {
-            int a1 = get_id(i+1, j+1, cols);
-            if (topo_max[a1][a1+1] == 0)
-                total++;
-            if (i < rows - 1)
-            {
-                if (topo_max[a1][a1+cols] == topo_max[a1][a1+cols] || topo_max[a1+cols][a1] == topo_max[a1+cols][a1])
-                    total++;
-            }
-        }
-    printf("place to cut: %d\n", total);
+    // for (int i = 0; i < rows; i++)
+    //     for (int j = 0; j < cols-1; j++)
+    //     {
+    //         int a1 = get_id(i+1, j+1, cols);
+    //         if (topo_max[a1][a1+1] == 0)
+    //             total++;
+    //         if (i < rows - 1)
+    //         {
+    //             if (topo_max[a1][a1+cols] == topo_max[a1][a1+cols] || topo_max[a1+cols][a1] == topo_max[a1+cols][a1])
+    //                 total++;
+    //         }
+    //     }
+    // printf("place to cut: %d\n", total);
 
     queue<int> bfs_points;
     while(!bfs_points.empty())
@@ -399,7 +448,7 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
         for (auto it = topo_max[tmp_place].begin(); it != topo_max[tmp_place].end(); it++)
         {
             int tmp = it->first;
-            if (d[tmp] == 0 && topo_max[tmp_place][tmp] > 0)
+            if (d[tmp] == 0 && topo_tmp[tmp_place][get_place(tmp_place, tmp)] > 0)
             {
                 d[tmp] = d[tmp_place] + 1;
                 bfs_points.push(tmp);
@@ -408,9 +457,9 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
         bfs_points.pop();
     }
 
-    for (int i = 0; i < rows; i++)
-        printf("%d ", seam_place[i]);
-    printf("\n");
+    // for (int i = 0; i < rows; i++)
+    //     printf("%d ", seam_place[i]);
+    // printf("\n");
     Mat showImage1(rows, cols, inputImage.type());
     inputImage.copyTo(showImage1);  //复制
     for (int i = 0; i < rows; i++)
