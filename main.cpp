@@ -157,8 +157,8 @@ void old_seam_carving (Mat& inputImage, Mat& outputImage)
         tmpImage.at<Vec3b>(i,k)[2] = 255;
     }
     //tmpImage.copyTo(outputImage);
-    imshow("Carving Window", tmpImage);
-    waitKey();
+    // imshow("Carving Window", tmpImage);
+    // waitKey();
 
     Mat image2(rows, cols-1, inputImage.type());
     Mat beDeletedLine(rows, 1, CV_8UC3);
@@ -274,18 +274,22 @@ int main (int argc, char** argv)
     Mat deletedLines(image1.rows, 300, CV_32F);
     Mat deletedLine1(image1.rows, 1, CV_32F);
 
-    for (int i = 0; i < 100; i++)
+    clock_t time1, time2;
+    time1 = clock();
+    for (int i = 0; i < 200; i++)
     {
         improved_seam_carving(tmpMat, image2);
         tmpMat = image2;
     }
+    time2 = clock();
     imshow("Carving Window", image2);
     waitKey();
     imwrite("./test1_1.png", image2);
+    printf("总共时间： %f s\n", (double)(time2 - time1) / CLOCKS_PER_SEC);
 
-    // for (int i = 0; i < 50; i++)
+    // for (int i = 0; i < 200; i++)
     // {
-    //     new_seam_carving(tmpMat, image2, deletedLine1);
+    //     old_seam_carving(tmpMat, image2);
     //     tmpMat = image2;
     //     // for (int j = 0; j < image1.rows; j++)
     //     // {
@@ -298,6 +302,7 @@ int main (int argc, char** argv)
     // }
     // imshow("Carving Window", image2);
     // waitKey();
+    // imwrite("./test1_3.png", image2);
 
     //试图显示切掉的线
     // for (int i = 0; i < 50; i++)

@@ -7,3 +7,5 @@ seam_carving
 *.cmake
 *.json
 build
+chairs
+video

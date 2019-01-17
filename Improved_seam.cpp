@@ -16,6 +16,10 @@ int topo_tmp[MAX_SIZE+1][9];
 int globals, globalt, globalrow;
 int seam_place[1000] = {0};
 
+int s_order[500];
+vector<int> random_num;
+bool is_random[1000] = {false};
+
 int get_id(int i, int j, int cols)
 {
     if (i < 1 || i > globalrow || j < 1 || j > cols)
@@ -44,6 +48,26 @@ void init_result(int cols)
     }
     memset(seam_place, 0, sizeof(int)*1000);   
     memset(topo_tmp, 0, sizeof(int)*MAX_SIZE*9); 
+
+    memset(s_order, 0, sizeof(int)*500);
+    memset(is_random, 0, sizeof(bool)*1000);
+
+    //printf("init\n");
+    srand((int)time(0));
+    random_num.clear();
+    while(random_num.size() < cols)
+    {
+        int newnum = rand() % cols;
+        //printf("???:%d\n", cols);
+        if (is_random[newnum])
+            continue;
+        else
+        {
+            random_num.push_back(newnum);
+            is_random[newnum] = true;
+        }
+    }
+    //printf("over\n");
 }
 
 void print_stack()
@@ -429,8 +453,15 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
     {
         int a1 = get_id(i, 1, cols);
         int a2 = get_id(i, cols, cols);
-        topo_re[s].push_back(a1);
+        //topo_re[s].push_back(a1);
+        s_order[i] = a1;
         topo_re[a2].push_back(t);
+    }
+    while (random_num.size() > 0)
+    {
+        int place = random_num.back();
+        topo_re[s].push_back(s_order[place]);
+        random_num.pop_back();
     }
     int amount = 2 * (2 * cols * rows - cols - rows) + 2 * (rows - 1) * (cols - 1) + rows * 2;
     int total = 0;
@@ -490,8 +521,14 @@ void improved_seam_carving (Mat& inputImage, Mat& outputImage)
         showImage1.at<Vec3b>(i,seam_place[i])[2] = 255;
     }
     time4 = clock();
-    imshow("Carving Window", showImage1);
-    waitKey();
+    // imshow("Carving Window", showImage1);
+    // waitKey();
+    string name_of_chair = "";
+    name_of_chair += "./chairs/test1_";
+    name_of_chair += to_string(cols);
+    name_of_chair += ".png";
+
+    imwrite(name_of_chair, showImage1);
 
     //--------->>>>>删除对应边
     Mat image2(rows, cols-1, inputImage.type());
