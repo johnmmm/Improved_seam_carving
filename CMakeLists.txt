@@ -9,7 +9,7 @@ pkg_check_modules(OpenCv REQUIRED opencv)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(SOURCE_FILES main.cpp Improved_seam.hpp Improved_seam.cpp)
+set(SOURCE_FILES main.cpp Improved_seam.hpp Improved_seam.cpp Video_seam.cpp Video_seam.hpp)
 
 set(CMAKE_BUILD_TYPE Release)
 

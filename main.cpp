@@ -6,6 +6,7 @@
 #include <cmath>
 #include <algorithm>
 #include "Improved_seam.hpp"
+#include "Video_seam.hpp"
 
 using namespace std;
 using namespace cv;
@@ -262,11 +263,11 @@ void new_seam_carving(Mat& inputImage, Mat& outputImage, Mat& deletedLine)
 int main (int argc, char** argv)
 {
     Mat image1 = imread("./test1.png");
-    namedWindow("Original Window");
-    imshow("Original Window", image1);
-    waitKey();
+    // namedWindow("Original Window");
+    // imshow("Original Window", image1);
+    // waitKey();
 
-    namedWindow("Carving Window");
+    // namedWindow("Carving Window");
     //Mat image2(image1.rows, image1.cols, image1.type());
     Mat tmpMat;
     Mat image2;
@@ -276,16 +277,23 @@ int main (int argc, char** argv)
 
     clock_t time1, time2;
     time1 = clock();
-    for (int i = 0; i < 200; i++)
-    {
-        improved_seam_carving(tmpMat, image2);
-        tmpMat = image2;
-    }
+    video_seam_carving();
     time2 = clock();
-    imshow("Carving Window", image2);
-    waitKey();
-    imwrite("./test1_1.png", image2);
     printf("总共时间： %f s\n", (double)(time2 - time1) / CLOCKS_PER_SEC);
+
+
+
+    // time1 = clock();
+    // for (int i = 0; i < 200; i++)
+    // {
+    //     improved_seam_carving(tmpMat, image2);
+    //     tmpMat = image2;
+    // }
+    // time2 = clock();
+    // imshow("Carving Window", image2);
+    // waitKey();
+    // imwrite("./test1_1.png", image2);
+    // printf("总共时间： %f s\n", (double)(time2 - time1) / CLOCKS_PER_SEC);
 
     // for (int i = 0; i < 200; i++)
     // {
